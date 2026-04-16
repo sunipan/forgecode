@@ -9,8 +9,8 @@ use forge_app::McpClientInfra;
 use forge_domain::{
     Environment, Image, McpHttpServer, McpServerConfig, ToolDefinition, ToolName, ToolOutput,
 };
-use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::Client;
+use reqwest::header::{HeaderName, HeaderValue};
 use rmcp::model::{CallToolRequestParam, ClientInfo, Implementation, InitializeRequestParam};
 use rmcp::service::RunningService;
 use rmcp::transport::sse_client::SseClientConfig;
@@ -73,23 +73,20 @@ impl ForgeMcpClient {
         let resolved = resolve_http_templates(
             match &config {
                 McpServerConfig::Http(http) => http.clone(),
-                McpServerConfig::Stdio(_) => {
-                    McpHttpServer {
-                        url: String::new(),
-                        headers: BTreeMap::new(),
-                        timeout: None,
-                        disable: false,
-                        oauth: forge_domain::McpOAuthSetting::default(),
-                    }
-                }
+                McpServerConfig::Stdio(_) => McpHttpServer {
+                    url: String::new(),
+                    headers: BTreeMap::new(),
+                    timeout: None,
+                    disable: false,
+                    oauth: forge_domain::McpOAuthSetting::default(),
+                },
             },
             env_vars,
         );
 
         let http_client = match resolved {
-            Ok(http) => {
-                Self::build_http_client(&McpServerConfig::Http(http)).unwrap_or_else(|_| Client::new())
-            }
+            Ok(http) => Self::build_http_client(&McpServerConfig::Http(http))
+                .unwrap_or_else(|_| Client::new()),
             _ => Client::new(),
         };
 
