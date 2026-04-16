@@ -11,7 +11,6 @@ use forge_domain::{
 };
 use reqwest::Client;
 use reqwest::header::{HeaderName, HeaderValue};
-use reqwest::header::{HeaderName, HeaderValue};
 use rmcp::model::{CallToolRequestParam, ClientInfo, Implementation, InitializeRequestParam};
 use rmcp::service::RunningService;
 use rmcp::transport::sse_client::SseClientConfig;
@@ -80,8 +79,7 @@ impl ForgeMcpClient {
         );
 
         let http_client = match resolved {
-            Ok(http) => Self::build_http_client(&McpServerConfig::Http(http))
-                .unwrap_or_else(|_| Client::new()),
+            Ok(http) => Self::build_http_client(&http).unwrap_or_else(|_| Client::new()),
             _ => Client::new(),
         };
 
