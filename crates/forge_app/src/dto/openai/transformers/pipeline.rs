@@ -14,6 +14,7 @@ use super::normalize_tool_schema::{
 use super::set_cache::SetCache;
 use super::set_reasoning_effort::SetReasoningEffort;
 use super::strip_thought_signature::StripThoughtSignature;
+use super::strip_unsupported_anthropic_reasoning::StripUnsupportedAnthropicReasoning;
 use super::tool_choice::SetToolChoice;
 use super::trim_tool_call_ids::TrimToolCallIds;
 use super::when_model::when_model;
@@ -59,6 +60,8 @@ impl Transformer for ProviderPipeline<'_> {
             provider.id == ProviderId::REQUESTY || provider.id == ProviderId::GITHUB_COPILOT
         });
 
+        let strip_unsupported_anthropic_reasoning = StripUnsupportedAnthropicReasoning;
+
         let github_copilot_reasoning =
             GitHubCopilotReasoning.when(move |_| provider.id == ProviderId::GITHUB_COPILOT);
 
@@ -85,6 +88,7 @@ impl Transformer for ProviderPipeline<'_> {
             .pipe(or_transformers)
             .pipe(strip_thought_signature)
             .pipe(set_reasoning_effort)
+            .pipe(strip_unsupported_anthropic_reasoning)
             .pipe(open_ai_compat)
             .pipe(github_copilot_reasoning)
             .pipe(kimi_k2_reasoning)

@@ -8,7 +8,7 @@ use forge_app::domain::{
 use forge_app::dto::anthropic::{
     AuthSystemMessage, CapitalizeToolNames, DropInvalidToolUse, EnforceStrictObjectSchema,
     EventData, ListModelResponse, ReasoningTransform, RemoveOutputFormat, Request, SanitizeToolIds,
-    SetCache,
+    SetCache, StripUnsupportedReasoning,
 };
 use forge_app::{EnvironmentInfra, HttpInfra};
 use forge_domain::{ChatRepository, Provider, ProviderId};
@@ -114,7 +114,12 @@ impl<T: HttpInfra> Anthropic<T> {
             .when(|_| self.use_oauth)
             .pipe(CapitalizeToolNames)
             .pipe(DropInvalidToolUse)
-            .pipe(SanitizeToolIds);
+            .pipe(SanitizeToolIds)
+            // Strip reasoning parameters (thinking, output_config.effort) when the
+            // target model does not support them.  Without this guard, sending
+            // effort to models like claude-3-5-haiku produces a 400 from the
+            // Anthropic API: "This model does not support the effort parameter."
+            .pipe(StripUnsupportedReasoning::new(model.as_str()));
 
         // Vertex AI does not support output_format, so we skip schema enforcement
         // and remove any output_format field

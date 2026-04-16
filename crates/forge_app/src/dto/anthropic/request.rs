@@ -60,7 +60,7 @@ impl SystemMessage {
     }
 }
 
-#[derive(Serialize, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Thinking {
     pub r#type: ThinkingType,
     pub budget_tokens: u64,
@@ -81,7 +81,7 @@ pub enum OutputEffort {
 
 /// Output configuration for newer Anthropic models that support effort-based
 /// reasoning (e.g. `claude-opus-4-6`).  Mutually exclusive with `thinking`.
-#[derive(Serialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct OutputConfig {
     pub effort: OutputEffort,
 }

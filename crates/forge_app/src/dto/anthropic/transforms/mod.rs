@@ -6,6 +6,7 @@ mod reasoning_transform;
 mod remove_output_format;
 mod sanitize_tool_ids;
 mod set_cache;
+mod strip_unsupported_reasoning;
 
 pub use auth_system_message::AuthSystemMessage;
 pub use capitalize_tool_names::CapitalizeToolNames;
@@ -15,3 +16,4 @@ pub use reasoning_transform::ReasoningTransform;
 pub use remove_output_format::RemoveOutputFormat;
 pub use sanitize_tool_ids::SanitizeToolIds;
 pub use set_cache::SetCache;
+pub use strip_unsupported_reasoning::StripUnsupportedReasoning;
