@@ -6,9 +6,10 @@ use crate::dto::anthropic::Request;
 /// Anthropic [`Request`] when the target model does not support them.
 ///
 /// Some Anthropic models (for example, `claude-3-5-haiku`) do not support the
-/// `thinking` object or the `output_config.effort` parameter. Sending either
-/// field to such models results in a 400 invalid request error.
-///
+/// `thinking` object or the `output_config.effort` parameter. Other models
+/// (for example, `claude-haiku-4-5`) support `thinking` but still reject
+/// `output_config.effort`.
+
 /// This transformer is constructed with the target model ID and removes the
 /// unsupported fields before the request is serialized and sent.
 ///
@@ -17,6 +18,7 @@ use crate::dto::anthropic::Request;
 /// | Model                     | `thinking` | `output_config.effort` |
 /// |---------------------------|------------|------------------------|
 /// | claude-3-5-haiku          | no         | no                     |
+/// | claude-haiku-4-5          | yes        | no                     |
 /// | claude-3-haiku            | no         | no                     |
 /// | claude-3-opus             | no         | no                     |
 /// | claude-3-sonnet           | no         | no                     |
@@ -65,16 +67,21 @@ impl Transformer for StripUnsupportedReasoning {
 /// Checks whether the given Anthropic model supports extended thinking
 /// (the `thinking` object with `budgetTokens`).
 ///
-/// Supported: claude-3-7-sonnet, claude-3-5-sonnet (v2+), claude-sonnet-4,
-/// claude-opus-4, and later.
+/// Supported: claude-3-7-sonnet, claude-3-5-sonnet (v2+), claude-haiku-4-5,
+/// claude-sonnet-4, claude-opus-4, and later.
 ///
 /// Not supported: claude-3-5-haiku, claude-3-haiku, claude-3-opus,
 /// claude-3-sonnet, and earlier.
 fn model_supports_thinking(model: &str) -> bool {
     let model = model.to_lowercase();
 
-    // Claude 4+ generation always supports thinking
+    // Claude 4+ Sonnet and Opus models always support thinking
     if model.contains("claude-opus-4") || model.contains("claude-sonnet-4") {
+        return true;
+    }
+
+    // Claude 4.5 Haiku supports thinking (but not effort)
+    if model.contains("claude-haiku-4") {
         return true;
     }
 
@@ -149,6 +156,13 @@ mod tests {
     }
 
     #[test]
+    fn test_model_supports_thinking_claude_haiku_4_5() {
+        let actual = model_supports_thinking("claude-haiku-4-5-20251001");
+        let expected = true;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn test_model_supports_thinking_claude_3_haiku() {
         let actual = model_supports_thinking("claude-3-haiku-20240307");
         let expected = false;
@@ -189,6 +203,13 @@ mod tests {
     fn test_model_supports_effort_claude_opus_4() {
         let actual = model_supports_effort("claude-opus-4-20250415");
         let expected = true;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_model_supports_effort_claude_haiku_4_5() {
+        let actual = model_supports_effort("claude-haiku-4-5-20251001");
+        let expected = false;
         assert_eq!(actual, expected);
     }
 
@@ -245,6 +266,23 @@ mod tests {
         let actual = transformer.transform(fixture);
 
         assert_eq!(actual.thinking, None, "haiku should not have thinking");
+    }
+
+    #[test]
+    fn test_strip_reasoning_haiku_4_5_keeps_thinking() {
+        let mut transformer = StripUnsupportedReasoning::new("claude-haiku-4-5-20251001");
+        let fixture = Request::try_from(Context::default().reasoning(ReasoningConfig {
+            enabled: Some(true),
+            max_tokens: Some(10000),
+            effort: None,
+            exclude: None,
+        }))
+        .unwrap();
+
+        let expected = fixture.thinking.clone();
+        let actual = transformer.transform(fixture);
+
+        assert_eq!(actual.thinking, expected, "haiku-4-5 should keep thinking");
     }
 
     #[test]

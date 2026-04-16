@@ -6,8 +6,10 @@ use forge_domain::Transformer;
 ///
 /// Bedrock reasoning parameters are currently sent via
 /// `additional_model_request_fields.thinking`. This field must not be sent to
-/// Claude models without thinking support (for example, Claude 3.5 Haiku) and
-/// should never be sent to non-Anthropic models.
+/// Claude models without thinking support (for example, Claude 3.5 Haiku),
+/// but should remain for models that support thinking and not effort (for
+/// example, Claude Haiku 4.5). It should never be sent to non-Anthropic
+/// models.
 pub struct StripUnsupportedReasoning {
     model: String,
 }
@@ -49,6 +51,10 @@ fn model_supports_thinking(model: &str) -> bool {
     }
 
     if model.contains("claude-opus-4") || model.contains("claude-sonnet-4") {
+        return true;
+    }
+
+    if model.contains("claude-haiku-4") {
         return true;
     }
 
@@ -122,6 +128,20 @@ mod tests {
 
         let mut transformer =
             StripUnsupportedReasoning::new("us.anthropic.claude-3-5-sonnet-20241022-v2:0");
+        let actual = transformer.transform(fixture);
+
+        assert!(actual.additional_model_request_fields().is_some());
+    }
+
+    #[test]
+    fn test_keep_reasoning_for_claude_haiku_4_5() {
+        let fixture =
+            ConverseStreamInput::from_domain(reasoning_context_fixture()).expect("valid context");
+
+        assert!(fixture.additional_model_request_fields().is_some());
+
+        let mut transformer =
+            StripUnsupportedReasoning::new("anthropic.claude-haiku-4-5-20251001-v1:0");
         let actual = transformer.transform(fixture);
 
         assert!(actual.additional_model_request_fields().is_some());

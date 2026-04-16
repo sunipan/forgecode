@@ -7,7 +7,9 @@ use crate::dto::openai::Request;
 ///
 /// This transformer protects providers such as OpenRouter, Requesty, and
 /// GitHub Copilot when they proxy Anthropic models. Some Claude models (for
-/// example, Claude 3.5 Haiku) reject effort-style reasoning parameters.
+/// example, Claude 3.5 Haiku) reject both thinking and effort parameters,
+/// while newer models such as Claude Haiku 4.5 support thinking but still
+/// reject effort-style reasoning parameters.
 pub struct StripUnsupportedAnthropicReasoning;
 
 impl Transformer for StripUnsupportedAnthropicReasoning {
@@ -60,6 +62,10 @@ fn is_anthropic_model(model: &str) -> bool {
 
 fn model_supports_thinking(model: &str) -> bool {
     if model.contains("claude-opus-4") || model.contains("claude-sonnet-4") {
+        return true;
+    }
+
+    if model.contains("claude-haiku-4") {
         return true;
     }
 
@@ -130,6 +136,32 @@ mod tests {
     fn test_claude_3_7_sonnet_keeps_thinking_budget_but_strips_effort() {
         let fixture = Request::default()
             .model(ModelId::new("anthropic/claude-3-7-sonnet-20250219"))
+            .reasoning(ReasoningConfig {
+                enabled: Some(true),
+                effort: Some(Effort::Medium),
+                max_tokens: Some(4096),
+                exclude: None,
+            })
+            .reasoning_effort("medium".to_string());
+
+        let mut transformer = StripUnsupportedAnthropicReasoning;
+        let actual = transformer.transform(fixture);
+
+        let expected_reasoning = Some(ReasoningConfig {
+            enabled: Some(true),
+            effort: None,
+            max_tokens: Some(4096),
+            exclude: None,
+        });
+        let expected_reasoning_effort: Option<String> = None;
+        assert_eq!(actual.reasoning, expected_reasoning);
+        assert_eq!(actual.reasoning_effort, expected_reasoning_effort);
+    }
+
+    #[test]
+    fn test_claude_haiku_4_5_keeps_thinking_budget_but_strips_effort() {
+        let fixture = Request::default()
+            .model(ModelId::new("anthropic/claude-haiku-4-5-20251001"))
             .reasoning(ReasoningConfig {
                 enabled: Some(true),
                 effort: Some(Effort::Medium),
