@@ -11,6 +11,7 @@ use forge_domain::{
 };
 use reqwest::Client;
 use reqwest::header::{HeaderName, HeaderValue};
+use reqwest::header::{HeaderName, HeaderValue};
 use rmcp::model::{CallToolRequestParam, ClientInfo, Implementation, InitializeRequestParam};
 use rmcp::service::RunningService;
 use rmcp::transport::sse_client::SseClientConfig;
@@ -43,23 +44,17 @@ pub struct ForgeMcpClient {
 
 impl ForgeMcpClient {
     /// Build a reqwest client with default headers from the MCP server config.
-    fn build_http_client(config: &McpServerConfig) -> anyhow::Result<Client> {
-        let headers = match config {
-            McpServerConfig::Http(http) => {
-                let mut header_map = reqwest::header::HeaderMap::new();
-                for (key, value) in &http.headers {
-                    if let Ok(name) = HeaderName::from_str(key)
-                        && let Ok(val) = HeaderValue::from_str(value)
-                    {
-                        header_map.insert(name, val);
-                    }
-                }
-                header_map
+    fn build_http_client(http: &McpHttpServer) -> anyhow::Result<Client> {
+        let mut header_map = reqwest::header::HeaderMap::new();
+        for (key, value) in &http.headers {
+            if let Ok(name) = HeaderName::from_str(key)
+                && let Ok(val) = HeaderValue::from_str(value)
+            {
+                header_map.insert(name, val);
             }
-            McpServerConfig::Stdio(_) => reqwest::header::HeaderMap::new(),
-        };
+        }
 
-        Ok(Client::builder().default_headers(headers).build()?)
+        Ok(Client::builder().default_headers(header_map).build()?)
     }
 
     pub fn new(
@@ -227,7 +222,7 @@ impl ForgeMcpClient {
         http: &McpHttpServer,
     ) -> anyhow::Result<RmcpClient> {
         // Try HTTP first, fall back to SSE if it fails
-        let client = self.reqwest_client(http);
+        let client = self.reqwest_client();
         let transport = StreamableHttpClientTransport::with_client(
             client.as_ref().clone(),
             StreamableHttpClientTransportConfig::with_uri(http.url.clone()),
@@ -404,7 +399,7 @@ impl ForgeMcpClient {
         http: &McpHttpServer,
         token: &str,
     ) -> anyhow::Result<Arc<RmcpClient>> {
-        let client = self.reqwest_client(http);
+        let client = self.reqwest_client();
         let transport = StreamableHttpClientTransport::with_client(
             client.as_ref().clone(),
             StreamableHttpClientTransportConfig::with_uri(http.url.clone()).auth_header(token),
@@ -502,7 +497,7 @@ impl ForgeMcpClient {
         Ok((code, state))
     }
 
-    fn reqwest_client(&self, _config: &McpHttpServer) -> Arc<Client> {
+    fn reqwest_client(&self) -> Arc<Client> {
         // Reuse the cached HTTP client (with pre-configured default headers)
         // to prevent file descriptor leaks. Each reqwest::Client manages its
         // own connection pool, so creating new clients for each connection
