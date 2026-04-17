@@ -190,10 +190,81 @@ mod tests {
     use std::fs::{self, File};
     use std::io::Write;
 
+    use forge_app::{WalkedFile, Walker};
+    use forge_domain::CommandOutput;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
 
     use super::*;
+
+    /// Test double that answers the three infra traits `FdDefault` depends on.
+    ///
+    /// * `WalkerInfra::walk` returns `files` verbatim so tests can control the
+    ///   post-filter input.
+    /// * `CommandInfra::execute_command` always fails, forcing `FdDefault` to
+    ///   fall back to the walker path.
+    /// * `IgnorePatternsRepository::list_ignore_patterns` returns `patterns`.
+    struct MockInfra {
+        files: Vec<WalkedFile>,
+        patterns: String,
+    }
+
+    impl MockInfra {
+        fn new(files: Vec<WalkedFile>, patterns: &str) -> Self {
+            Self { files, patterns: patterns.to_string() }
+        }
+    }
+
+    fn walked(path: &str) -> WalkedFile {
+        WalkedFile {
+            path: path.to_string(),
+            file_name: Path::new(path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string()),
+            size: 0,
+        }
+    }
+
+    #[async_trait]
+    impl WalkerInfra for MockInfra {
+        async fn walk(&self, _config: Walker) -> anyhow::Result<Vec<WalkedFile>> {
+            Ok(self.files.clone())
+        }
+    }
+
+    #[async_trait]
+    impl CommandInfra for MockInfra {
+        async fn execute_command(
+            &self,
+            command: String,
+            _working_dir: PathBuf,
+            _silent: bool,
+            _env_vars: Option<Vec<String>>,
+        ) -> anyhow::Result<CommandOutput> {
+            Ok(CommandOutput {
+                command,
+                stdout: String::new(),
+                stderr: "not a git repo".to_string(),
+                exit_code: Some(128),
+            })
+        }
+
+        async fn execute_command_raw(
+            &self,
+            _command: &str,
+            _working_dir: PathBuf,
+            _env_vars: Option<Vec<String>>,
+        ) -> anyhow::Result<std::process::ExitStatus> {
+            unreachable!("not used by FdDefault discovery")
+        }
+    }
+
+    #[async_trait]
+    impl IgnorePatternsRepository for MockInfra {
+        async fn list_ignore_patterns(&self) -> anyhow::Result<String> {
+            Ok(self.patterns.clone())
+        }
+    }
 
     #[test]
     fn test_filter_and_resolve_excludes_symlinks() {
@@ -260,6 +331,43 @@ mod tests {
         // filter before symlink detection could be needed, but the real file
         // must always be present.
         let expected = vec![base.join("src/main.rs")];
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn test_discover_filters_files_matching_server_ignore_patterns() {
+        let dir = tempdir().unwrap();
+        let base = dir.path();
+
+        // Create every candidate on disk so `is_symlink` returns false and
+        // `has_allowed_extension` sees a real extension.
+        for rel in [
+            "main.rs",
+            "lib.rs",
+            "node_modules/pkg/index.rs",
+            "package-lock.json",
+        ] {
+            let path = base.join(rel);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            File::create(&path).unwrap();
+        }
+
+        let fixture = FdDefault::new(Arc::new(MockInfra::new(
+            vec![
+                walked("main.rs"),
+                walked("lib.rs"),
+                walked("node_modules/pkg/index.rs"),
+                walked("package-lock.json"),
+            ],
+            "node_modules\npackage-lock.json\n",
+        )));
+
+        let mut actual = fixture.discover(base).await.unwrap();
+        actual.sort();
+
+        let mut expected = vec![base.join("lib.rs"), base.join("main.rs")];
+        expected.sort();
+
         assert_eq!(actual, expected);
     }
 }
