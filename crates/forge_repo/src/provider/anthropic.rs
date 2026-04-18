@@ -102,17 +102,18 @@ impl<T: HttpInfra> Anthropic<T> {
         let context = ReasoningTransform.transform(context);
 
         // Read out of `context` before `Request::try_from` consumes it.
-        let display_preference = context
-            .reasoning
-            .as_ref()
-            .and_then(|r| r.exclude)
-            .map(|exclude| {
-                if exclude {
-                    ThinkingDisplay::Omitted
-                } else {
-                    ThinkingDisplay::Summarized
-                }
-            });
+        let display_preference =
+            context
+                .reasoning
+                .as_ref()
+                .and_then(|r| r.exclude)
+                .map(|exclude| {
+                    if exclude {
+                        ThinkingDisplay::Omitted
+                    } else {
+                        ThinkingDisplay::Summarized
+                    }
+                });
 
         let mut request = Request::try_from(context)?.max_tokens(max_tokens as u64);
 

@@ -127,8 +127,7 @@ impl TryFrom<forge_domain::Context> for Request {
         // Gate on the domain rule so inherited configs with `enabled: None` but
         // a positive effort / `max_tokens` still emit reasoning on the wire.
         let reasoning_on = request.is_reasoning_supported();
-        let (thinking, output_config) = if reasoning_on && let Some(reasoning) = request.reasoning
-        {
+        let (thinking, output_config) = if reasoning_on && let Some(reasoning) = request.reasoning {
             // Adaptive thinking on 4.7 hides reasoning content by default; opting
             // into reasoning should surface it unless the caller set `exclude`.
             let adaptive_display = if reasoning.exclude == Some(true) {
@@ -583,7 +582,10 @@ mod tests {
 
         let actual = Request::try_from(fixture).unwrap();
 
-        assert_eq!(actual.thinking, Some(Thinking::Enabled { budget_tokens: 8000 }));
+        assert_eq!(
+            actual.thinking,
+            Some(Thinking::Enabled { budget_tokens: 8000 })
+        );
         assert_eq!(actual.output_config, None);
     }
 
@@ -599,7 +601,10 @@ mod tests {
 
         let actual = Request::try_from(fixture).unwrap();
 
-        assert_eq!(actual.thinking, Some(Thinking::Enabled { budget_tokens: 8000 }));
+        assert_eq!(
+            actual.thinking,
+            Some(Thinking::Enabled { budget_tokens: 8000 })
+        );
         assert_eq!(
             actual.output_config,
             Some(OutputConfig { effort: OutputEffort::Low })
@@ -617,7 +622,10 @@ mod tests {
 
         let actual = Request::try_from(fixture).unwrap();
 
-        assert_eq!(actual.thinking, Some(Thinking::Enabled { budget_tokens: 8000 }));
+        assert_eq!(
+            actual.thinking,
+            Some(Thinking::Enabled { budget_tokens: 8000 })
+        );
         assert_eq!(actual.output_config, None);
     }
 
@@ -738,7 +746,10 @@ mod tests {
 
         let actual = Request::try_from(fixture).unwrap();
 
-        assert_eq!(actual.thinking, Some(Thinking::Enabled { budget_tokens: 8000 }));
+        assert_eq!(
+            actual.thinking,
+            Some(Thinking::Enabled { budget_tokens: 8000 })
+        );
     }
 
     #[test]

@@ -99,9 +99,7 @@ impl Transformer for ModelSpecificThinking {
                          budgets are unsupported. Use `reasoning.effort` to control \
                          thinking depth instead."
                     );
-                    request.thinking = Some(Thinking::Adaptive {
-                        display: Some(self.display),
-                    });
+                    request.thinking = Some(Thinking::Adaptive { display: Some(self.display) });
                 }
                 request.temperature = None;
                 request.top_p = None;
@@ -109,17 +107,15 @@ impl Transformer for ModelSpecificThinking {
             }
             ModelFamily::LegacyWithEffort => {
                 if let Some(Thinking::Adaptive { .. }) = request.thinking {
-                    request.thinking = Some(Thinking::Enabled {
-                        budget_tokens: DEFAULT_LEGACY_BUDGET_TOKENS,
-                    });
+                    request.thinking =
+                        Some(Thinking::Enabled { budget_tokens: DEFAULT_LEGACY_BUDGET_TOKENS });
                 }
                 clamp_effort_to_high(&mut request.output_config);
             }
             ModelFamily::LegacyNoEffort => {
                 if let Some(Thinking::Adaptive { .. }) = request.thinking {
-                    request.thinking = Some(Thinking::Enabled {
-                        budget_tokens: DEFAULT_LEGACY_BUDGET_TOKENS,
-                    });
+                    request.thinking =
+                        Some(Thinking::Enabled { budget_tokens: DEFAULT_LEGACY_BUDGET_TOKENS });
                 }
                 if request.output_config.is_some() {
                     warn!(
@@ -177,7 +173,10 @@ mod tests {
 
     #[test]
     fn test_opus_4_7_strips_sampling_params_even_without_thinking() {
-        let fixture = Request::default().temperature(0.5f32).top_p(0.9f32).top_k(40u64);
+        let fixture = Request::default()
+            .temperature(0.5f32)
+            .top_p(0.9f32)
+            .top_k(40u64);
         let actual = ModelSpecificThinking::new("claude-opus-4-7").transform(fixture);
 
         assert_eq!(actual.temperature, None);
@@ -188,8 +187,7 @@ mod tests {
     #[test]
     fn test_opus_4_7_bedrock_prefix_still_matches() {
         let fixture = fixture_request_with_thinking(Thinking::Enabled { budget_tokens: 8000 });
-        let actual =
-            ModelSpecificThinking::new("us.anthropic.claude-opus-4-7").transform(fixture);
+        let actual = ModelSpecificThinking::new("us.anthropic.claude-opus-4-7").transform(fixture);
 
         assert_eq!(
             actual.thinking,
@@ -215,7 +213,10 @@ mod tests {
     fn test_opus_4_6_passes_both_shapes_through() {
         let fixture1 = fixture_request_with_thinking(Thinking::Enabled { budget_tokens: 8000 });
         let actual1 = ModelSpecificThinking::new("claude-opus-4-6").transform(fixture1);
-        assert_eq!(actual1.thinking, Some(Thinking::Enabled { budget_tokens: 8000 }));
+        assert_eq!(
+            actual1.thinking,
+            Some(Thinking::Enabled { budget_tokens: 8000 })
+        );
         assert_eq!(actual1.temperature, Some(0.5));
 
         let fixture2 = fixture_request_with_thinking(Thinking::Adaptive {
@@ -246,7 +247,10 @@ mod tests {
         let fixture = fixture_request_with_thinking(Thinking::Enabled { budget_tokens: 8000 });
         let actual = ModelSpecificThinking::new("claude-3-7-sonnet-20250219").transform(fixture);
 
-        assert_eq!(actual.thinking, Some(Thinking::Enabled { budget_tokens: 8000 }));
+        assert_eq!(
+            actual.thinking,
+            Some(Thinking::Enabled { budget_tokens: 8000 })
+        );
         assert_eq!(actual.temperature, Some(0.5));
     }
 
@@ -302,7 +306,8 @@ mod tests {
 
     #[test]
     fn test_opus_4_7_preserves_xhigh_effort() {
-        let fixture = Request::default().output_config(OutputConfig { effort: OutputEffort::XHigh });
+        let fixture =
+            Request::default().output_config(OutputConfig { effort: OutputEffort::XHigh });
         let actual = ModelSpecificThinking::new("claude-opus-4-7").transform(fixture);
 
         assert_eq!(
@@ -313,7 +318,8 @@ mod tests {
 
     #[test]
     fn test_opus_4_6_replaces_xhigh_with_max() {
-        let fixture = Request::default().output_config(OutputConfig { effort: OutputEffort::XHigh });
+        let fixture =
+            Request::default().output_config(OutputConfig { effort: OutputEffort::XHigh });
         let actual = ModelSpecificThinking::new("claude-opus-4-6").transform(fixture);
 
         assert_eq!(
@@ -325,7 +331,8 @@ mod tests {
     #[test]
     fn test_opus_4_5_clamps_xhigh_to_high() {
         // Opus 4.5 supports effort but not xhigh or max; clamp to high.
-        let fixture = Request::default().output_config(OutputConfig { effort: OutputEffort::XHigh });
+        let fixture =
+            Request::default().output_config(OutputConfig { effort: OutputEffort::XHigh });
         let actual = ModelSpecificThinking::new("claude-opus-4-5-20251101").transform(fixture);
 
         assert_eq!(
@@ -349,8 +356,7 @@ mod tests {
     fn test_opus_4_5_preserves_supported_effort_levels() {
         for level in [OutputEffort::Low, OutputEffort::Medium, OutputEffort::High] {
             let fixture = Request::default().output_config(OutputConfig { effort: level });
-            let actual =
-                ModelSpecificThinking::new("claude-opus-4-5-20251101").transform(fixture);
+            let actual = ModelSpecificThinking::new("claude-opus-4-5-20251101").transform(fixture);
             assert_eq!(
                 actual.output_config,
                 Some(OutputConfig { effort: level }),
@@ -369,7 +375,8 @@ mod tests {
             "claude-opus-4-20250514",
             "claude-3-7-sonnet-20250219",
         ] {
-            let fixture = Request::default().output_config(OutputConfig { effort: OutputEffort::High });
+            let fixture =
+                Request::default().output_config(OutputConfig { effort: OutputEffort::High });
             let actual = ModelSpecificThinking::new(model).transform(fixture);
             assert_eq!(actual.output_config, None, "model {}", model);
         }
