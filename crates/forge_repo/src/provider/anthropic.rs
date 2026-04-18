@@ -7,8 +7,8 @@ use forge_app::domain::{
 };
 use forge_app::dto::anthropic::{
     AuthSystemMessage, CapitalizeToolNames, DropInvalidToolUse, EnforceStrictObjectSchema,
-    EventData, ListModelResponse, ReasoningTransform, RemoveOutputFormat, Request, SanitizeToolIds,
-    SetCache,
+    EventData, ListModelResponse, ModelSpecificThinking, ReasoningTransform, RemoveOutputFormat,
+    Request, SanitizeToolIds, SetCache, ThinkingDisplay,
 };
 use forge_app::{EnvironmentInfra, HttpInfra};
 use forge_domain::{ChatRepository, Provider, ProviderId};
@@ -101,6 +101,19 @@ impl<T: HttpInfra> Anthropic<T> {
         // transform the context to match the request format
         let context = ReasoningTransform.transform(context);
 
+        // Read out of `context` before `Request::try_from` consumes it.
+        let display_preference = context
+            .reasoning
+            .as_ref()
+            .and_then(|r| r.exclude)
+            .map(|exclude| {
+                if exclude {
+                    ThinkingDisplay::Omitted
+                } else {
+                    ThinkingDisplay::Summarized
+                }
+            });
+
         let mut request = Request::try_from(context)?.max_tokens(max_tokens as u64);
 
         // For Vertex AI Anthropic, model is in the URL path, not the request body
@@ -110,11 +123,16 @@ impl<T: HttpInfra> Anthropic<T> {
             request = request.model(model.as_str().to_string());
         }
 
+        let mut thinking_transform = ModelSpecificThinking::new(model.as_str());
+        if let Some(display) = display_preference {
+            thinking_transform = thinking_transform.display(display);
+        }
         let pipeline = AuthSystemMessage::default()
             .when(|_| self.use_oauth)
             .pipe(CapitalizeToolNames)
             .pipe(DropInvalidToolUse)
-            .pipe(SanitizeToolIds);
+            .pipe(SanitizeToolIds)
+            .pipe(thinking_transform);
 
         // Vertex AI does not support output_format, so we skip schema enforcement
         // and remove any output_format field
