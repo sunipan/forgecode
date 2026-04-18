@@ -14,7 +14,6 @@ use tokio_stream::StreamExt;
 
 use crate::provider::bedrock_cache::SetCache;
 use crate::provider::bedrock_sanitize_ids::SanitizeToolIds;
-use crate::provider::bedrock_strip_unsupported_reasoning::StripUnsupportedReasoning;
 use crate::provider::retry::into_retry;
 use crate::provider::{FromDomain, IntoDomain};
 
@@ -206,7 +205,6 @@ impl BedrockProvider {
         let bedrock_input = SetCache
             .when(move |_| supports_caching)
             .pipe(SanitizeToolIds)
-            .pipe(StripUnsupportedReasoning)
             .transform(bedrock_input);
 
         // Build and send the converse_stream request

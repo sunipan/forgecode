@@ -10,7 +10,6 @@ mod pipeline;
 mod set_cache;
 mod set_reasoning_effort;
 mod strip_thought_signature;
-mod strip_unsupported_anthropic_reasoning;
 mod tool_choice;
 mod trim_tool_call_ids;
 mod when_model;

@@ -79,6 +79,7 @@ mod normalize_tool_args;
 mod reasoning_normalizer;
 mod set_model;
 mod sort_tools;
+mod strip_unsupported_reasoning;
 mod transform_tool_calls;
 
 pub use drop_reasoning_details::DropReasoningDetails;
@@ -87,6 +88,7 @@ pub use normalize_tool_args::NormalizeToolCallArguments;
 pub use reasoning_normalizer::ReasoningNormalizer;
 pub use set_model::SetModel;
 pub use sort_tools::SortTools;
+pub use strip_unsupported_reasoning::StripUnsupportedReasoning;
 pub use transform_tool_calls::TransformToolCalls;
 
 #[cfg(test)]

@@ -2,7 +2,6 @@ mod anthropic;
 mod bedrock;
 mod bedrock_cache;
 mod bedrock_sanitize_ids;
-mod bedrock_strip_unsupported_reasoning;
 mod chat;
 mod event;
 mod google;

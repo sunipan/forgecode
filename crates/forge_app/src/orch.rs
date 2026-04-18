@@ -204,6 +204,7 @@ impl<S: AgentService + EnvironmentInfra<Config = forge_config::ForgeConfig>> Orc
             .pipe(NormalizeToolCallArguments::new())
             .pipe(TransformToolCalls::new().when(|_| !tool_supported))
             .pipe(ImageHandling::new())
+            .pipe(StripUnsupportedReasoning::new(model_id.clone()))
             // Drop ALL reasoning (including config) when reasoning is not supported by the model
             .pipe(DropReasoningDetails.when(|_| !reasoning_supported))
             // Strip all reasoning from messages when the model has changed (signatures are
