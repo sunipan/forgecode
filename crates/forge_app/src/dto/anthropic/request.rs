@@ -61,7 +61,8 @@ impl SystemMessage {
 }
 
 /// Anthropic's `thinking` request field. Opus 4.7 rejects the `Enabled` shape
-/// with a 400 — the `ModelSpecificThinking` transformer handles the migration.
+/// and the orchestrator applies model-specific reasoning normalization before
+/// request conversion.
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Thinking {
