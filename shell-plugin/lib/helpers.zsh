@@ -11,9 +11,130 @@ function _forge_get_commands() {
     echo "$_FORGE_COMMANDS"
 }
 
-# Private fzf function with common options for consistent UX
-function _forge_fzf() {
-    fzf --reverse --exact --cycle --select-1 --height 80% --no-scrollbar --ansi --color="header:bold" "$@"
+# Private select function using forge's built-in nucleo-picker
+# Translates common picker options to forge select arguments.
+function _forge_select() {
+    local -a forge_args=()
+    local query=""
+    local prompt=""
+    local multi=false
+    local header_lines=0
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --query=*)
+                query="${1#--query=}"
+                ;;
+            --query)
+                shift
+                query="$1"
+                ;;
+            --prompt=*)
+                prompt="${1#--prompt=}"
+                ;;
+            --prompt)
+                shift
+                prompt="$1"
+                ;;
+            --delimiter=*)
+                forge_args+=(--delimiter "${1#--delimiter=}")
+                ;;
+            --delimiter)
+                shift
+                forge_args+=(--delimiter "$1")
+                ;;
+            --with-nth=*)
+                forge_args+=(--with-nth "${1#--with-nth=}")
+                ;;
+            --with-nth)
+                shift
+                forge_args+=(--with-nth "$1")
+                ;;
+            --preview=*)
+                forge_args+=(--preview "${1#--preview=}")
+                ;;
+            --preview)
+                shift
+                forge_args+=(--preview "$1")
+                ;;
+            --preview-window=*)
+                forge_args+=(--preview-window "${1#--preview-window=}")
+                ;;
+            --preview-window)
+                shift
+                forge_args+=(--preview-window "$1")
+                ;;
+            --multi)
+                multi=true
+                ;;
+            --header-lines=*)
+                header_lines="${1#--header-lines=}"
+                ;;
+            --header-lines)
+                shift
+                header_lines="$1"
+                ;;
+            --nth=*|--bind=*|--ansi|--no-scrollbar|--height=*|--cycle|--select-1|--reverse|--exact|--color=*|--color)
+                # Unsupported picker options - silently ignore
+                if [[ "$1" == --prompt ]]; then
+                    shift
+                fi
+                ;;
+            *)
+                # Unknown option - ignore
+                ;;
+        esac
+        shift
+    done
+
+    if [[ -n "$query" ]]; then
+        forge_args+=(--query "$query")
+    fi
+    if [[ -n "$prompt" ]]; then
+        forge_args+=(--prompt "$prompt")
+    fi
+    if [[ "$multi" == true ]]; then
+        forge_args+=(--multi)
+    fi
+
+    local input_file output_file selectable_file exit_status
+    input_file=$(mktemp -t forge-select-input.XXXXXX) || return 1
+    output_file=$(mktemp -t forge-select-output.XXXXXX) || {
+        rm -f "$input_file"
+        return 1
+    }
+    selectable_file=$(mktemp -t forge-select-choices.XXXXXX) || {
+        rm -f "$input_file" "$output_file"
+        return 1
+    }
+
+    cat > "$input_file"
+
+    if [[ ! -s "$input_file" ]]; then
+        rm -f "$input_file" "$output_file" "$selectable_file"
+        return 1
+    fi
+
+    if (( header_lines > 0 )); then
+        tail -n +$((header_lines + 1)) "$input_file" > "$selectable_file"
+    else
+        cp "$input_file" "$selectable_file"
+    fi
+
+    if [[ ! -s "$selectable_file" ]]; then
+        rm -f "$input_file" "$output_file" "$selectable_file"
+        return 1
+    fi
+
+    if $_FORGE_BIN select "${forge_args[@]}" < "$selectable_file" > "$output_file" 2>/dev/tty; then
+        cat "$output_file"
+        exit_status=0
+    else
+        exit_status=$?
+    fi
+
+    rm -f "$input_file" "$output_file" "$selectable_file"
+    return $exit_status
 }
 
 # Helper function to execute forge commands consistently
@@ -49,7 +170,7 @@ function _forge_exec() {
 }
 
 # Like _forge_exec but connects stdin/stdout to /dev/tty so that interactive
-# prompts (rustyline, fzf, etc.) work correctly when forge is launched as a
+# prompts (rustyline, nucleo-picker, etc.) work correctly when forge is launched as a
 # child of a ZLE widget. ZLE owns the terminal and replaces the process's
 # stdin/stdout with its own pipes, so without this redirect any readline
 # library would see a non-tty stdin and return EOF immediately.

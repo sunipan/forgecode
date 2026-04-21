@@ -2,9 +2,8 @@ use std::io::IsTerminal;
 
 use anyhow::Result;
 use console::strip_ansi_codes;
-use fzf_wrapped::{Fzf, Layout};
-
-use crate::select::{indexed_items, parse_fzf_index};
+use nucleo_picker::{PickerOptions, render::StrRenderer};
+use nucleo_picker::error::PickError;
 
 /// Builder for multi-select prompts.
 pub struct MultiSelectBuilder<T> {
@@ -22,14 +21,12 @@ impl<T> MultiSelectBuilder<T> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the fzf process fails to start or interact
+    /// Returns an error if the picker fails to start or interact
     pub fn prompt(self) -> Result<Option<Vec<T>>>
     where
         T: std::fmt::Display + Clone,
     {
-        // Bail immediately when stdin is not a terminal to prevent the process
-        // from blocking indefinitely on a detached or non-interactive session.
-        if !std::io::stdin().is_terminal() {
+        if !std::io::stderr().is_terminal() {
             return Ok(None);
         }
 
@@ -43,24 +40,23 @@ impl<T> MultiSelectBuilder<T> {
             .map(|item| strip_ansi_codes(&item.to_string()).trim().to_string())
             .collect();
 
-        let fzf = build_multi_fzf(&self.message);
+        let mut picker: nucleo_picker::Picker<String, _> = PickerOptions::default()
+            .reversed(true)
+            .picker(StrRenderer);
 
-        let mut fzf = fzf;
-        fzf.run()
-            .map_err(|e| anyhow::anyhow!("Failed to start fzf: {e}"))?;
-        fzf.add_items(indexed_items(&display_options))
-            .map_err(|e| anyhow::anyhow!("Failed to add items to fzf: {e}"))?;
+        picker.extend_exact(display_options.into_iter());
 
-        let raw_output = fzf.output();
+        println!("{}", self.message);
 
-        match raw_output {
-            None => Ok(None),
-            Some(output) => {
-                let selected_items: Vec<T> = output
-                    .lines()
-                    .filter(|line| !line.trim().is_empty())
-                    .filter_map(|line| {
-                        parse_fzf_index(line).and_then(|index| self.options.get(index).cloned())
+        match picker.pick_multi() {
+            Ok(selection) if selection.is_empty() => Ok(None),
+            Ok(selection) => {
+                let selected_items: Vec<T> = selection
+                    .iter()
+                    .filter_map(|selected_str| {
+                        self.options.iter().find(|opt| {
+                            strip_ansi_codes(&opt.to_string()).trim() == *selected_str
+                        }).cloned()
                     })
                     .collect();
 
@@ -70,29 +66,11 @@ impl<T> MultiSelectBuilder<T> {
                     Ok(Some(selected_items))
                 }
             }
+            Err(PickError::NotInteractive) => Ok(None),
+            Err(PickError::UserInterrupted) => Ok(None),
+            Err(e) => Err(anyhow::anyhow!("Picker error: {e}")),
         }
     }
-}
-
-/// Builds an `Fzf` instance for multi-select prompts.
-fn build_multi_fzf(message: &str) -> Fzf {
-    let mut builder = Fzf::builder();
-    builder.layout(Layout::Reverse);
-    builder.no_scrollbar(true);
-    builder.prompt(format!("{} ❯ ", message));
-    builder.custom_args(vec![
-        "--height=80%".to_string(),
-        "--exact".to_string(),
-        "--cycle".to_string(),
-        "--color=dark,header:bold".to_string(),
-        "--pointer=▌".to_string(),
-        "--delimiter=\t".to_string(),
-        "--with-nth=2..".to_string(),
-        "--multi".to_string(),
-    ]);
-    builder
-        .build()
-        .expect("fzf builder should always succeed with default options")
 }
 
 #[cfg(test)]

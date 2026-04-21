@@ -40,7 +40,7 @@ function _forge_action_agent() {
         
         # Create prompt with current agent - show agent ID, title, provider, model and reasoning
         local prompt_text="Agent ❯ "
-        local fzf_args=(
+        local select_args=(
             --prompt="$prompt_text"
             --delimiter="$_FORGE_DELIMITER"
             --with-nth="1,2,4,5,6"
@@ -49,12 +49,12 @@ function _forge_action_agent() {
         # If there's a current agent, position cursor on it
         if [[ -n "$current_agent" ]]; then
             local index=$(_forge_find_index "$sorted_agents" "$current_agent")
-            fzf_args+=(--bind="start:pos($index)")
+            select_args+=(--bind="start:pos($index)")
         fi
 
         local selected_agent
-        # Use fzf without preview for simple selection like provider/model
-        selected_agent=$(echo "$sorted_agents" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+        # Use interactive picker without preview for simple selection like provider/model
+        selected_agent=$(echo "$sorted_agents" | _forge_select --header-lines=1 "${select_args[@]}")
         
         if [[ -n "$selected_agent" ]]; then
             # Extract the first field (agent ID)
@@ -72,16 +72,16 @@ function _forge_action_agent() {
     fi
 }
 
-# Helper: Open an fzf model picker and print the raw selected line.
+# Helper: Open an interactive model picker and print the raw selected line.
 #
 # Model list columns (from `forge list models --porcelain`):
 #   1:model_id  2:model_name  3:provider(display)  4:provider_id(raw)  5:context  6:tools  7:image
 # The picker hides model_id (field 1) and provider_id (field 4) via --with-nth.
 #
 # Arguments:
-#   $1  prompt_text      - fzf prompt label (e.g. "Model ❯ ")
+#   $1  prompt_text      - prompt label (e.g. "Model ❯ ")
 #   $2  current_model    - model_id to pre-position the cursor on (may be empty)
-#   $3  input_text       - optional pre-fill query for fzf
+#   $3  input_text       - optional pre-fill query
 #   $4  current_provider - provider value to disambiguate when model names collide (may be empty)
 #   $5  provider_field   - which porcelain field to match the provider against
 #                          (3 for display name, 4 for raw id)
@@ -101,14 +101,14 @@ function _forge_pick_model() {
         return 1
     fi
 
-    local fzf_args=(
+    local select_args=(
         --delimiter="$_FORGE_DELIMITER"
         --prompt="$prompt_text"
         --with-nth="2,3,5.."
     )
 
     if [[ -n "$input_text" ]]; then
-        fzf_args+=(--query="$input_text")
+        select_args+=(--query="$input_text")
     fi
 
     if [[ -n "$current_model" ]]; then
@@ -120,10 +120,10 @@ function _forge_pick_model() {
         else
             index=$(_forge_find_index "$output" "$current_model" 1)
         fi
-        fzf_args+=(--bind="start:pos($index)")
+        select_args+=(--bind="start:pos($index)")
     fi
 
-    echo "$output" | _forge_fzf --header-lines=1 "${fzf_args[@]}"
+    echo "$output" | _forge_select --header-lines=1 "${select_args[@]}"
 }
 
 # Action handler: Select model (across all configured providers)
@@ -254,7 +254,7 @@ function _forge_action_sync_info() {
     _forge_exec workspace info "."
 }
 
-# Helper function to select and set config values with fzf
+# Helper function to select and set config values with interactive picker
 function _forge_select_and_set_config() {
     local show_command="$1"
     local config_flag="$2"
@@ -276,25 +276,25 @@ function _forge_select_and_set_config() {
         
         if [[ -n "$output" ]]; then
             local selected
-            local fzf_args=(--delimiter="$_FORGE_DELIMITER" --prompt="$prompt_text ❯ ")
+            local select_args=(--delimiter="$_FORGE_DELIMITER" --prompt="$prompt_text ❯ ")
 
             if [[ -n "$with_nth" ]]; then
-                fzf_args+=(--with-nth="$with_nth")
+                select_args+=(--with-nth="$with_nth")
             fi
 
             # Add query parameter if provided
             if [[ -n "$query" ]]; then
-                fzf_args+=(--query="$query")
+                select_args+=(--query="$query")
             fi
 
             if [[ -n "$default_value" ]]; then
                 # For models, compare against the first field (model_id)
                 local index=$(_forge_find_index "$output" "$default_value" 1)
                 
-                fzf_args+=(--bind="start:pos($index)")
+                select_args+=(--bind="start:pos($index)")
                 
             fi
-            selected=$(echo "$output" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+            selected=$(echo "$output" | _forge_select --header-lines=1 "${select_args[@]}")
 
             if [[ -n "$selected" ]]; then
                 local name="${selected%% *}"
@@ -386,21 +386,21 @@ function _forge_action_reasoning_effort() {
         current_effort=$($_FORGE_BIN config get reasoning-effort 2>/dev/null)
     fi
 
-    local fzf_args=(
+    local select_args=(
         --prompt="Reasoning Effort ❯ "
     )
 
     if [[ -n "$input_text" ]]; then
-        fzf_args+=(--query="$input_text")
+        select_args+=(--query="$input_text")
     fi
 
     if [[ -n "$current_effort" ]]; then
         local index=$(_forge_find_index "$efforts" "$current_effort" 1)
-        fzf_args+=(--bind="start:pos($index)")
+        select_args+=(--bind="start:pos($index)")
     fi
 
     local selected
-    selected=$(echo "$efforts" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+    selected=$(echo "$efforts" | _forge_select --header-lines=1 "${select_args[@]}")
 
     if [[ -n "$selected" ]]; then
         _FORGE_SESSION_REASONING_EFFORT="$selected"
@@ -422,21 +422,21 @@ function _forge_action_config_reasoning_effort() {
         local current_effort
         current_effort=$($_FORGE_BIN config get reasoning-effort 2>/dev/null)
 
-        local fzf_args=(
+        local select_args=(
             --prompt="Config Reasoning Effort ❯ "
         )
 
         if [[ -n "$input_text" ]]; then
-            fzf_args+=(--query="$input_text")
+            select_args+=(--query="$input_text")
         fi
 
         if [[ -n "$current_effort" ]]; then
             local index=$(_forge_find_index "$efforts" "$current_effort" 1)
-            fzf_args+=(--bind="start:pos($index)")
+            select_args+=(--bind="start:pos($index)")
         fi
 
         local selected
-        selected=$(echo "$efforts" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+        selected=$(echo "$efforts" | _forge_select --header-lines=1 "${select_args[@]}")
 
         if [[ -n "$selected" ]]; then
             _forge_exec config set reasoning-effort "$selected"

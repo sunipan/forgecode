@@ -9,16 +9,16 @@ function forge-completion() {
     if [[ "$current_word" =~ ^@.*$ ]]; then
         local filter_text="${current_word#@}"
         local selected
-        local fzf_args=(
+        local select_args=(
             --preview="if [ -d {} ]; then ls -la --color=always {} 2>/dev/null || ls -la {}; else $_FORGE_CAT_CMD {}; fi"
             $_FORGE_PREVIEW_WINDOW
         )
         
         local file_list=$(${FORGE_BIN:-forge} list files --porcelain)
         if [[ -n "$filter_text" ]]; then
-            selected=$(echo "$file_list" | _forge_fzf --query "$filter_text" "${fzf_args[@]}")
+            selected=$(echo "$file_list" | _forge_select --query "$filter_text" "${select_args[@]}")
         else
-            selected=$(echo "$file_list" | _forge_fzf "${fzf_args[@]}")
+            selected=$(echo "$file_list" | _forge_select "${select_args[@]}")
         fi
         
         if [[ -n "$selected" ]]; then
@@ -40,12 +40,12 @@ function forge-completion() {
         # Lazily load the commands list
         local commands_list=$(_forge_get_commands)
         if [[ -n "$commands_list" ]]; then
-            # Use fzf for interactive selection with prefilled filter
+            # Use interactive picker for selection with prefilled filter
             local selected
             if [[ -n "$filter_text" ]]; then
-                selected=$(echo "$commands_list" | _forge_fzf --header-lines=1 --delimiter="$_FORGE_DELIMITER" --nth=1 --query "$filter_text" --prompt="Command ❯ ")
+                selected=$(echo "$commands_list" | _forge_select --header-lines=1 --delimiter="$_FORGE_DELIMITER" --nth=1 --query "$filter_text" --prompt="Command ❯ ")
             else
-                selected=$(echo "$commands_list" | _forge_fzf --header-lines=1 --delimiter="$_FORGE_DELIMITER" --nth=1 --prompt="Command ❯ ")
+                selected=$(echo "$commands_list" | _forge_select --header-lines=1 --delimiter="$_FORGE_DELIMITER" --nth=1 --prompt="Command ❯ ")
             fi
             
             if [[ -n "$selected" ]]; then

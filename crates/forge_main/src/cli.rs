@@ -148,6 +148,41 @@ pub enum TopLevelCommand {
 
     /// Run diagnostics on shell environment (alias for `zsh doctor`).
     Doctor,
+
+    /// Interactive fuzzy item picker.
+    Select(SelectArgs),
+}
+
+/// Arguments for the `forge select` command.
+#[derive(Parser, Debug, Clone)]
+pub struct SelectArgs {
+    /// Prompt text displayed before the picker.
+    #[arg(long, short = 'p')]
+    pub prompt: Option<String>,
+
+    /// Initial query text pre-filled in the search box.
+    #[arg(long, short = 'q')]
+    pub query: Option<String>,
+
+    /// Allow selecting multiple items.
+    #[arg(long, short = 'm')]
+    pub multi: bool,
+
+    /// Shell command used to render a preview for the selected item.
+    #[arg(long)]
+    pub preview: Option<String>,
+
+    /// Regex delimiter used to split fields in each input line.
+    #[arg(long)]
+    pub delimiter: Option<String>,
+
+    /// Comma-separated field list used for display text.
+    #[arg(long = "with-nth")]
+    pub with_nth: Option<String>,
+
+    /// Preview window layout hint.
+    #[arg(long = "preview-window")]
+    pub preview_window: Option<String>,
 }
 
 /// Command group for custom command management.

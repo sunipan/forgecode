@@ -722,6 +722,10 @@ impl<A: API + ConsoleWriter + 'static, F: Fn(ForgeConfig) -> A + Send + Sync> UI
                 self.on_zsh_doctor().await?;
                 return Ok(());
             }
+            TopLevelCommand::Select(args) => {
+                crate::select_cmd::run_select(args)?;
+                return Ok(());
+            }
         }
         Ok(())
     }
@@ -2870,7 +2874,7 @@ impl<A: API + ConsoleWriter + 'static, F: Fn(ForgeConfig) -> A + Send + Sync> UI
 
         // Find starting cursor position for the current model.
         // The cursor position is relative to the data rows (header is excluded
-        // by fzf's --header-lines), so index 0 = first data row.
+        // by the picker's header-lines), so index 0 = first data row.
         let current_model = self
             .get_agent_model(self.api.get_active_agent().await)
             .await;
@@ -3290,7 +3294,7 @@ impl<A: API + ConsoleWriter + 'static, F: Fn(ForgeConfig) -> A + Send + Sync> UI
     }
 
     /// Builds a porcelain-style provider selection list from a set of
-    /// providers, displays it in fzf, and returns the selected provider.
+    /// providers, displays it in the interactive picker, and returns the selected provider.
     ///
     /// The display matches the shell plugin's `_forge_select_provider`:
     /// columns NAME, HOST, TYPE, LOGGED IN (hiding the raw ID column).

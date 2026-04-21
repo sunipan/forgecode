@@ -42,7 +42,7 @@ function _forge_select_provider() {
         current_provider=$($_FORGE_BIN config get provider --porcelain 2>/dev/null)
     fi
     
-    local fzf_args=(
+    local select_args=(
         --delimiter="$_FORGE_DELIMITER"
         --prompt="Provider ❯ "
         --with-nth=1,3..
@@ -50,18 +50,18 @@ function _forge_select_provider() {
     
     # Add query parameter if provided
     if [[ -n "$query" ]]; then
-        fzf_args+=(--query="$query")
+        select_args+=(--query="$query")
     fi
     
     # Position cursor on current provider if available
     if [[ -n "$current_provider" ]]; then
         # For providers, compare against the first field (display name)
         local index=$(_forge_find_index "$output" "$current_provider" 1)
-        fzf_args+=(--bind="start:pos($index)")
+        select_args+=(--bind="start:pos($index)")
     fi
     
     local selected
-    selected=$(echo "$output" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+    selected=$(echo "$output" | _forge_select --header-lines=1 "${select_args[@]}")
     
     if [[ -n "$selected" ]]; then
         echo "$selected"

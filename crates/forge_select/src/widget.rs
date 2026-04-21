@@ -3,10 +3,9 @@ use crate::input::InputBuilder;
 use crate::multi::MultiSelectBuilder;
 use crate::select::SelectBuilder;
 
-/// Centralized fzf-based select functionality with consistent error handling.
+/// Centralized fuzzy select functionality with consistent error handling.
 ///
-/// All interactive selection is delegated to the external `fzf` binary.
-/// Requires `fzf` to be installed on the system.
+/// All interactive selection is handled by the built-in `nucleo-picker` crate.
 pub struct ForgeWidget;
 
 impl ForgeWidget {

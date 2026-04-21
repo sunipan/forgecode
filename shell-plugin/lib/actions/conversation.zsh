@@ -3,7 +3,7 @@
 # Conversation management action handlers
 # 
 # Features:
-# - :conversation          - List and switch conversations (with fzf)
+# - :conversation          - List and switch conversations (with interactive picker)
 # - :conversation <id>     - Switch to specific conversation by ID
 # - :conversation -        - Toggle between current and previous conversation (like cd -)
 # - :clone                 - Clone current or selected conversation
@@ -105,7 +105,7 @@ function _forge_action_conversation() {
         
         # Create prompt with current conversation
         local prompt_text="Conversation ❯ "
-        local fzf_args=(
+        local select_args=(
             --prompt="$prompt_text"
             --delimiter="$_FORGE_DELIMITER"
             --with-nth="2,3"
@@ -117,12 +117,12 @@ function _forge_action_conversation() {
         if [[ -n "$current_id" ]]; then
             # For conversations, compare against the first field (conversation_id)
             local index=$(_forge_find_index "$conversations_output" "$current_id" 1)
-            fzf_args+=(--bind="start:pos($index)")
+            select_args+=(--bind="start:pos($index)")
         fi
 
         local selected_conversation
-        # Use fzf with preview showing the last message from the conversation
-        selected_conversation=$(echo "$conversations_output" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+        # Use interactive picker with preview showing the last message from the conversation
+        selected_conversation=$(echo "$conversations_output" | _forge_select --header-lines=1 "${select_args[@]}")
         
         if [[ -n "$selected_conversation" ]]; then
             # Extract the first field (UUID) - everything before the first multi-space delimiter
@@ -160,7 +160,7 @@ function _forge_action_clone() {
         return 0
     fi
     
-    # Get conversations list for fzf selection
+    # Get conversations list for interactive picker selection
     local conversations_output
     conversations_output=$($_FORGE_BIN conversation list --porcelain 2>/dev/null)
     
@@ -172,9 +172,9 @@ function _forge_action_clone() {
     # Get current conversation ID if set
     local current_id="$_FORGE_CONVERSATION_ID"
     
-    # Create fzf interface similar to :conversation
+    # Create interactive picker interface similar to :conversation
     local prompt_text="Clone Conversation ❯ "
-    local fzf_args=(
+    local select_args=(
         --prompt="$prompt_text"
         --delimiter="$_FORGE_DELIMITER"
         --with-nth="2,3"
@@ -185,11 +185,11 @@ function _forge_action_clone() {
     # Position cursor on current conversation if available
     if [[ -n "$current_id" ]]; then
         local index=$(_forge_find_index "$conversations_output" "$current_id")
-        fzf_args+=(--bind="start:pos($index)")
+        select_args+=(--bind="start:pos($index)")
     fi
 
     local selected_conversation
-    selected_conversation=$(echo "$conversations_output" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+    selected_conversation=$(echo "$conversations_output" | _forge_select --header-lines=1 "${select_args[@]}")
     
     if [[ -n "$selected_conversation" ]]; then
         # Extract conversation ID
@@ -291,7 +291,7 @@ function _forge_action_conversation_rename() {
     local current_id="$_FORGE_CONVERSATION_ID"
 
     local prompt_text="Rename Conversation ❯ "
-    local fzf_args=(
+    local select_args=(
         --prompt="$prompt_text"
         --delimiter="$_FORGE_DELIMITER"
         --with-nth="2,3"
@@ -301,11 +301,11 @@ function _forge_action_conversation_rename() {
 
     if [[ -n "$current_id" ]]; then
         local index=$(_forge_find_index "$conversations_output" "$current_id" 1)
-        fzf_args+=(--bind="start:pos($index)")
+        select_args+=(--bind="start:pos($index)")
     fi
 
     local selected_conversation
-    selected_conversation=$(echo "$conversations_output" | _forge_fzf --header-lines=1 "${fzf_args[@]}")
+    selected_conversation=$(echo "$conversations_output" | _forge_select --header-lines=1 "${select_args[@]}")
 
     if [[ -n "$selected_conversation" ]]; then
         local conversation_id=$(echo "$selected_conversation" | sed -E 's/  .*//' | tr -d '\n')

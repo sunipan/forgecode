@@ -24,11 +24,12 @@ mod utils;
 mod vscode;
 mod zsh;
 
+mod select_cmd;
 mod update;
 
 use std::sync::LazyLock;
 
-pub use cli::{Cli, ListCommand, ListCommandGroup, TopLevelCommand};
+pub use cli::{Cli, ListCommand, ListCommandGroup, SelectArgs, TopLevelCommand};
 pub use sandbox::Sandbox;
 pub use title_display::*;
 pub use ui::UI;
