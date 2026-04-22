@@ -71,7 +71,8 @@ impl Transformer for ProviderPipeline<'_> {
 
         let cerebras_compat = MakeCerebrasCompat.when(move |_| provider.id == ProviderId::CEREBRAS);
 
-        let fireworks_compat = MakeFireworksCompat.when(move |_| provider.id == ProviderId::FIREWORKS_AI);
+        let fireworks_compat =
+            MakeFireworksCompat.when(move |_| provider.id == ProviderId::FIREWORKS_AI);
 
         let xai_compat = MakeXaiCompat.when(move |_| provider.id == ProviderId::XAI);
 
