@@ -7,6 +7,7 @@ use super::drop_tool_call::DropToolCalls;
 use super::github_copilot_reasoning::GitHubCopilotReasoning;
 use super::kimi_k2_reasoning::KimiK2Reasoning;
 use super::make_cerebras_compat::MakeCerebrasCompat;
+use super::make_fireworks_compat::MakeFireworksCompat;
 use super::make_openai_compat::MakeOpenAiCompat;
 use super::make_xai_compat::MakeXaiCompat;
 use super::minimax::SetMinimaxParams;
@@ -70,6 +71,8 @@ impl Transformer for ProviderPipeline<'_> {
 
         let cerebras_compat = MakeCerebrasCompat.when(move |_| provider.id == ProviderId::CEREBRAS);
 
+        let fireworks_compat = MakeFireworksCompat.when(move |_| provider.id == ProviderId::FIREWORKS_AI);
+
         let xai_compat = MakeXaiCompat.when(move |_| provider.id == ProviderId::XAI);
 
         let trim_tool_call_ids = TrimToolCallIds.when(move |_| provider.id == ProviderId::OPENAI);
@@ -89,6 +92,7 @@ impl Transformer for ProviderPipeline<'_> {
             .pipe(or_transformers)
             .pipe(strip_thought_signature)
             .pipe(set_reasoning_effort)
+            .pipe(fireworks_compat)
             .pipe(open_ai_compat)
             .pipe(github_copilot_reasoning)
             .pipe(kimi_k2_reasoning)
